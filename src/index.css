@@ -1,0 +1,166 @@
+/* AQUEOUSS PI Management System - Design Tokens & Global Styles */
+:root {
+  --primary-color: #0ea5e9; /* Sleek sky blue */
+  --primary-hover: #0284c7;
+  --primary-light: #e0f2fe;
+  --secondary-color: #0f172a; /* Slate 900 */
+  --bg-light: #f8fafc; /* Slate 50 */
+  --card-bg-light: #ffffff;
+  --border-light: #e2e8f0;
+  --text-primary-light: #0f172a;
+  --text-secondary-light: #475569;
+  
+  /* Dark Mode Variables */
+  --bg-dark: #090d16;
+  --card-bg-dark: #121824;
+  --border-dark: #1e293b;
+  --text-primary-dark: #f8fafc;
+  --text-secondary-dark: #94a3b8;
+  
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-brand: 'Outfit', sans-serif;
+  --border-radius: 8px;
+  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-light);
+  color: var(--text-primary-light);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ant Design overrides for Premium Look */
+.ant-layout {
+  font-family: var(--font-family) !important;
+}
+
+.ant-menu {
+  font-family: var(--font-brand) !important;
+}
+
+/* Glassmorphism Cards */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+}
+
+.dark-theme .glass-card {
+  background: rgba(18, 24, 36, 0.7);
+  border-color: rgba(30, 41, 59, 0.8);
+}
+
+/* Custom styles for PI Creation Modules */
+.product-table-card .ant-table {
+  background: transparent !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-entry {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Sign-in Page Styling */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-container::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
+  top: -200px;
+  right: -200px;
+  z-index: 1;
+}
+
+.login-container::after {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(2, 132, 199, 0.12) 0%, transparent 70%);
+  bottom: -200px;
+  left: -200px;
+  z-index: 1;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 440px;
+  z-index: 10;
+  padding: 40px;
+  background: rgba(18, 24, 36, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* PDF Print styling - ensures perfect print layouts */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area, .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
+
+/* Custom premium buttons */
+.btn-primary-grad {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border: none !important;
+  color: white !important;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4) !important;
+}
+
+.btn-primary-grad:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.6) !important;
+}
