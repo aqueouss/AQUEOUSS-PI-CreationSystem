@@ -13,11 +13,13 @@ import {
   Space, 
   Modal, 
   App,
-  Popconfirm
+  Popconfirm,
+  Switch,
+  Select
 } from "antd";
 import { PlusOutlined, DeleteOutlined, FileSearchOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { generatePI } from "../api";
-import { User, PICreationInput } from "../types";
+import { User, PICreationInput, PIPreviewData, InvoiceNotes } from "../types";
 import { PIPreview } from "./PIPreview";
 
 interface PICreationProps {
@@ -30,8 +32,9 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
-  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewData, setPreviewData] = useState<PIPreviewData | null>(null);
   const [wasGenerated, setWasGenerated] = useState(false);
+  const notesEnabled = Form.useWatch(["invoiceNotes", "enabled"], form);
 
   // States to keep track of live calculations
   const [, setRefreshVal] = useState(0);
@@ -84,14 +87,25 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
   };
 
   // Trigger preview
+  const buildPreviewData = (values: Record<string, unknown>): PIPreviewData => {
+    const calculatedTotals = getTotals(values);
+    const notes = values.invoiceNotes as InvoiceNotes | undefined;
+    const invoiceNotes =
+      notes?.enabled && notes.description?.trim()
+        ? { enabled: true, title: notes.title, description: notes.description.trim() }
+        : undefined;
+
+    return {
+      ...(values as Omit<PIPreviewData, "totals" | "invoiceNotes">),
+      invoiceNotes,
+      totals: calculatedTotals
+    };
+  };
+
   const handlePreview = () => {
     form.validateFields()
       .then((values) => {
-        const calculatedTotals = getTotals(values);
-        setPreviewData({
-          ...values,
-          totals: calculatedTotals
-        });
+        setPreviewData(buildPreviewData(values));
         setWasGenerated(false);
         setPreviewVisible(true);
       })
@@ -124,9 +138,8 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
           
           // Render preview/download of the final document
           setPreviewData({
-            ...values,
+            ...buildPreviewData(values),
             piNumber: response.piNumber,
-            totals: calculatedTotals,
             date: new Date().toISOString().split("T")[0]
           });
           setWasGenerated(true);
@@ -137,7 +150,8 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
           form.setFieldsValue({ 
             products: [{ productName: "", hsnCode: "", quantity: 1, unit: "Pcs", rate: 0 }],
             additionalCharges: [],
-            piSharedBy: currentUser.name
+            piSharedBy: currentUser.name,
+            invoiceNotes: { enabled: false, title: "Important Notes", description: "" }
           });
         } catch (err: any) {
           message.error(err.message || "Failed to generate Proforma Invoice");
@@ -168,7 +182,8 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
           products: [{ productName: "", hsnCode: "", quantity: 1, unit: "Pcs", rate: 0 }],
           isDelhiNcr: false,
           additionalCharges: [],
-          piSharedBy: currentUser.name
+          piSharedBy: currentUser.name,
+          invoiceNotes: { enabled: false, title: "Important Notes", description: "" }
         }}
         onValuesChange={() => {
           // Trigger recalculations on value changes
@@ -415,6 +430,53 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
                   </>
                 )}
               </Form.List>
+            </Card>
+
+            <Card title="Notes / Terms (Optional)" bordered={false} className="glass-card" style={{ marginBottom: 24 }}>
+              <Form.Item
+                name={["invoiceNotes", "enabled"]}
+                label="Add Important Notes or Terms & Conditions"
+                valuePropName="checked"
+              >
+                <Switch checkedChildren="On" unCheckedChildren="Off" />
+              </Form.Item>
+
+              {notesEnabled && (
+                <>
+                  <Form.Item
+                    name={["invoiceNotes", "title"]}
+                    label="Section Title"
+                    rules={[{ required: true, message: "Please select a section title" }]}
+                  >
+                    <Select
+                      options={[
+                        { value: "Important Notes", label: "Important Notes" },
+                        { value: "Terms and Conditions", label: "Terms and Conditions" }
+                      ]}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    name={["invoiceNotes", "description"]}
+                    label="Description"
+                    extra="Enter each point on a new line. They will appear as bullet points on the invoice."
+                    rules={[
+                      { required: true, message: "Please enter at least one note or term" },
+                      {
+                        validator: (_, value) =>
+                          value?.trim()
+                            ? Promise.resolve()
+                            : Promise.reject(new Error("Please enter at least one note or term"))
+                      }
+                    ]}
+                  >
+                    <Input.TextArea
+                      rows={5}
+                      placeholder={"Example:\nPayment due within 7 days\nGoods once sold will not be taken back\nDelivery within 15 working days"}
+                    />
+                  </Form.Item>
+                </>
+              )}
             </Card>
           </Col>
 

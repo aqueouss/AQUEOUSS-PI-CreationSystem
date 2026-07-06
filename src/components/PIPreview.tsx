@@ -2,41 +2,35 @@ import React, { useCallback, useEffect } from "react";
 import { Button, Space, App } from "antd";
 import { DownloadOutlined, CloseOutlined } from "@ant-design/icons";
 import html2pdf from "html2pdf.js";
+import { PIPreviewData } from "../types";
+import { savePI, triggerBlobDownload } from "../piStorage";
 
 interface PIPreviewProps {
-  data: {
-    piNumber?: string;
-    customerName: string;
-    address: string;
-    mobile: string;
-    gstin?: string;
-    state: string;
-    isDelhiNcr: boolean;
-    additionalCharges: Array<{
-      desc: string;
-      amount: number;
-    }>;
-    products: Array<{
-      productName: string;
-      hsnCode: string;
-      quantity: number;
-      unit: string;
-      rate: number;
-    }>;
-    date?: string;
-    dispatchDate?: string;
-    piSharedBy?: string;
-    totals: {
-      subtotal: number;
-      taxable: number;
-      cgst: number;
-      sgst: number;
-      igst: number;
-      gst: number;
-      grand: number;
-    };
-  };
+  data: PIPreviewData;
   onClose: () => void;
+  readOnly?: boolean;
+}
+
+const PDF_OPTIONS = {
+  margin: [10, 10, 10, 10] as number[],
+  image: { type: "jpeg", quality: 0.98 },
+  html2canvas: {
+    scale: 2,
+    useCORS: true,
+    letterRendering: true,
+    width: 794
+  },
+  jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+};
+
+export async function generatePdfBlob(element: HTMLElement, piNo: string): Promise<Blob> {
+  return html2pdf()
+    .from(element)
+    .set({
+      ...PDF_OPTIONS,
+      filename: `PI_${piNo.replace(/\//g, "-")}.pdf`
+    })
+    .outputPdf("blob");
 }
 
 // Indian Number to Words converter
@@ -97,7 +91,14 @@ function numberToWords(num: number): string {
   return words + " Only";
 }
 
-export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose }) => {
+function parseBulletPoints(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-•*]\s*/, ""))
+    .filter(Boolean);
+}
+
+export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = false }) => {
   const { message } = App.useApp();
   const piNo = data.piNumber || "AQ/2026-27/DRAFT";
   const piDate = data.date || new Date().toISOString().split("T")[0];
@@ -114,29 +115,30 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose }) => {
     try {
       message.loading({ content: "Generating PDF file...", key: "pdf-gen" });
 
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `PI_${piNo.replace(/\//g, "-")}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          letterRendering: true,
-          width: 794
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
-      };
+      const blob = await generatePdfBlob(element, piNo);
+      triggerBlobDownload(blob, `PI_${piNo.replace(/\//g, "-")}.pdf`);
 
-      await html2pdf().from(element).set(opt).save();
+      if (data.piNumber && !readOnly) {
+        await savePI({
+          piNumber: data.piNumber,
+          savedAt: new Date().toISOString(),
+          customerName: data.customerName,
+          date: piDate,
+          grandTotal: data.totals.grand,
+          invoiceData: data,
+          pdfBlob: blob
+        });
+      }
+
       message.success({ content: "Invoice downloaded successfully!", key: "pdf-gen" });
     } catch (err) {
       console.error(err);
       message.error({ content: "Could not generate PDF. Please use browser print (Ctrl+P)", key: "pdf-gen" });
     }
-  }, [message, piNo]);
+  }, [message, piNo, data, piDate, readOnly]);
 
   useEffect(() => {
-    if (!data.piNumber) return;
+    if (!data.piNumber || readOnly) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -157,7 +159,7 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose }) => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [data.piNumber, handleDownload]);
+  }, [data.piNumber, handleDownload, readOnly]);
 
   return (
     <div>
@@ -352,10 +354,24 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose }) => {
             </div>
           </div>
 
-          {/* Amount In Words & Terms */}
-          <div style={{ border: "1px solid #cbd5e1", padding: "10px", borderRadius: "4px", marginBottom: "30px" }}>
+          {/* Amount In Words */}
+          <div style={{ border: "1px solid #cbd5e1", padding: "10px", borderRadius: "4px", marginBottom: "20px" }}>
             <strong>Amount in Words: </strong> {numberToWords(data.totals.grand)}
           </div>
+
+          {/* Optional Notes / Terms */}
+          {data.invoiceNotes?.enabled && data.invoiceNotes.description && (
+            <div style={{ border: "1px solid #cbd5e1", padding: "10px", borderRadius: "4px", marginBottom: "30px" }}>
+              <h4 style={{ margin: "0 0 8px 0", color: "#0f172a", fontSize: "13px", fontWeight: 700 }}>
+                {data.invoiceNotes.title}
+              </h4>
+              <ul style={{ margin: 0, paddingLeft: "20px", color: "#334155" }}>
+                {parseBulletPoints(data.invoiceNotes.description).map((point, idx) => (
+                  <li key={idx} style={{ marginBottom: "4px" }}>{point}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Footer signatures */}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px", paddingTop: "20px" }}>

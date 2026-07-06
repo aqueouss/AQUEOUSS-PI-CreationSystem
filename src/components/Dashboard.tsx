@@ -1,14 +1,19 @@
-import React, { useEffect, useState } from "react";
-import { Card, Col, Row, Statistic, Table, Tag, Button, Spin, Alert } from "antd";
-import { 
-  FileTextOutlined, 
-  CalendarOutlined, 
-  NumberOutlined, 
+import React, { useCallback, useEffect, useState } from "react";
+import { Card, Col, Row, Statistic, Table, Tag, Button, Spin, Alert, Modal, App, Empty } from "antd";
+import {
+  FileTextOutlined,
+  CalendarOutlined,
+  NumberOutlined,
   ReloadOutlined,
-  DollarCircleOutlined
+  DollarCircleOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+  SaveOutlined
 } from "@ant-design/icons";
 import { getDashboardData } from "../api";
-import { PILogEntry, DashboardStats, User } from "../types";
+import { getSavedPIs, downloadStoredPI } from "../piStorage";
+import { PILogEntry, DashboardStats, User, StoredPI } from "../types";
+import { PIPreview } from "./PIPreview";
 
 interface DashboardProps {
   currentUser: User;
@@ -16,10 +21,18 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentPIs, setRecentPIs] = useState<PILogEntry[]>([]);
+  const [savedPIs, setSavedPIs] = useState<StoredPI[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [previewPI, setPreviewPI] = useState<StoredPI | null>(null);
+
+  const loadSavedPIs = useCallback(async () => {
+    const stored = await getSavedPIs();
+    setSavedPIs(stored);
+  }, []);
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -28,8 +41,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
       const result = await getDashboardData();
       setStats(result.stats);
       setRecentPIs(result.recentPIs);
+      await loadSavedPIs();
     } catch (err: any) {
       setError(err.message || "Failed to load dashboard data");
+      await loadSavedPIs();
     } finally {
       setLoading(false);
     }
@@ -38,6 +53,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
   useEffect(() => {
     fetchDashboard();
   }, []);
+
+  const handleDownloadSaved = async (piNumber: string) => {
+    const ok = await downloadStoredPI(piNumber);
+    if (ok) {
+      message.success("PDF downloaded successfully!");
+    } else {
+      message.error("Saved PDF not found. Generate this PI again to store a copy.");
+    }
+  };
 
   const columns = [
     {
@@ -51,9 +75,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
       dataIndex: "date",
       key: "date",
       render: (dateStr: string) => new Date(dateStr).toLocaleDateString("en-IN", {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
+        year: "numeric",
+        month: "short",
+        day: "numeric"
       })
     },
     {
@@ -84,6 +108,77 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
       dataIndex: "generatedBy",
       key: "generatedBy",
       render: (text: string) => <Tag color="purple">{text}</Tag>
+    }
+  ];
+
+  const savedColumns = [
+    {
+      title: "PI Number",
+      dataIndex: "piNumber",
+      key: "piNumber",
+      render: (text: string) => <Tag color="green" style={{ fontSize: "0.9rem", padding: "4px 8px" }}>{text}</Tag>,
+    },
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "date",
+      render: (dateStr: string) => new Date(dateStr).toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      })
+    },
+    {
+      title: "Customer",
+      dataIndex: "customerName",
+      key: "customerName",
+      ellipsis: true,
+    },
+    {
+      title: "Grand Total",
+      dataIndex: "grandTotal",
+      key: "grandTotal",
+      align: "right" as const,
+      render: (val: number) => (
+        <span style={{ fontWeight: 600 }}>
+          ₹{val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      title: "Saved At",
+      dataIndex: "savedAt",
+      key: "savedAt",
+      render: (dateStr: string) => new Date(dateStr).toLocaleString("en-IN", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_: unknown, record: StoredPI) => (
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            type="primary"
+            size="small"
+            icon={<DownloadOutlined />}
+            onClick={() => handleDownloadSaved(record.piNumber)}
+          >
+            Download PDF
+          </Button>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setPreviewPI(record)}
+          >
+            Preview
+          </Button>
+        </div>
+      )
     }
   ];
 
@@ -140,7 +235,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
                 />
               </Card>
             </Col>
-            
+
             <Col xs={24} sm={12} lg={8}>
               <Card bordered={false} className="glass-card" hoverable>
                 <Statistic
@@ -164,14 +259,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
             </Col>
           </Row>
 
-          <Card 
+          <Card
+            title={
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <SaveOutlined style={{ color: "#10b981" }} />
+                <span style={{ fontFamily: "var(--font-brand)", fontWeight: 600 }}>Saved Invoices (This Device)</span>
+              </div>
+            }
+            bordered={false}
+            className="glass-card"
+            style={{ marginBottom: 28 }}
+          >
+            {savedPIs.length === 0 ? (
+              <Empty description="No saved PIs on this device yet. Generate a PI to see it here." />
+            ) : (
+              <Table
+                dataSource={savedPIs}
+                columns={savedColumns}
+                rowKey="piNumber"
+                pagination={false}
+                scroll={{ x: true }}
+              />
+            )}
+          </Card>
+
+          <Card
             title={
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <DollarCircleOutlined style={{ color: "var(--primary-color)" }} />
                 <span style={{ fontFamily: "var(--font-brand)", fontWeight: 600 }}>Recent Proforma Invoices</span>
               </div>
             }
-            bordered={false} 
+            bordered={false}
             className="glass-card"
           >
             <Table
@@ -185,6 +304,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
           </Card>
         </>
       )}
+
+      <Modal
+        open={!!previewPI}
+        onCancel={() => setPreviewPI(null)}
+        destroyOnClose
+        footer={null}
+        width={900}
+        style={{ top: 20 }}
+      >
+        {previewPI && (
+          <PIPreview
+            data={previewPI.invoiceData}
+            onClose={() => setPreviewPI(null)}
+            readOnly
+          />
+        )}
+      </Modal>
     </div>
   );
 };
