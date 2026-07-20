@@ -304,9 +304,9 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
             {/* Left Bank Details */}
             <div style={{ width: "48%", border: "1px solid #cbd5e1", borderRadius: "4px", padding: "10px", alignSelf: "flex-start" }}>
               <h4 style={{ margin: "0 0 6px 0", color: "#0f172a", borderBottom: "1px solid #e2e8f0", paddingBottom: "4px" }}>Bank Details</h4>
-              <strong>Bank Name:</strong> AXIS BANK LTD.<br />
-              <strong>Account No:</strong> 922030033289537<br />
-              <strong>IFSC Code:</strong> UTIB0004138<br />
+              <strong>Bank Name:</strong> ICICI BANK LTD.<br />
+              <strong>Account No:</strong> 707405000027<br />
+              <strong>IFSC Code:</strong> ICIC0007074<br />
               <strong>Branch:</strong> MAYAPURI PHASE-1, New Delhi
             </div>
 
