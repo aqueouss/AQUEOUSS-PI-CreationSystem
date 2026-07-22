@@ -41,6 +41,8 @@ export interface AdditionalCharge {
 
 export type InvoiceNotesTitle = "Important Notes" | "Terms and Conditions";
 
+export type PIMode = "duty_paid" | "igcr";
+
 export interface InvoiceNotes {
   enabled: boolean;
   title: InvoiceNotesTitle;
@@ -54,6 +56,7 @@ export interface PICreationInput {
   gstin: string;
   state: string;
   isDelhiNcr: boolean;
+  piMode?: PIMode;
   additionalCharges: AdditionalCharge[];
   products: Omit<Product, "key">[];
   date?: string;
@@ -79,6 +82,7 @@ export interface PIPreviewData {
   gstin?: string;
   state: string;
   isDelhiNcr: boolean;
+  piMode?: PIMode;
   additionalCharges: AdditionalCharge[];
   products: Array<{
     productName: string;

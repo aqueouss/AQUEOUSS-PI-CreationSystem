@@ -15,7 +15,8 @@ import {
   App,
   Popconfirm,
   Switch,
-  Select
+  Select,
+  Segmented
 } from "antd";
 import { PlusOutlined, DeleteOutlined, FileSearchOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { generatePI } from "../api";
@@ -35,6 +36,7 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
   const [previewData, setPreviewData] = useState<PIPreviewData | null>(null);
   const [wasGenerated, setWasGenerated] = useState(false);
   const notesEnabled = Form.useWatch(["invoiceNotes", "enabled"], form);
+  const piMode = Form.useWatch("piMode", form) ?? "duty_paid";
 
   // States to keep track of live calculations
   const [, setRefreshVal] = useState(0);
@@ -57,12 +59,15 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
     let sgst = 0;
     let igst = 0;
 
-    const isDelhi = formValues?.isDelhiNcr || false;
-    if (isDelhi) {
-      cgst = taxableAmount * 0.09;
-      sgst = taxableAmount * 0.09;
-    } else {
-      igst = taxableAmount * 0.18;
+    const isIgcr = formValues?.piMode === "igcr";
+    if (!isIgcr) {
+      const isDelhi = formValues?.isDelhiNcr || false;
+      if (isDelhi) {
+        cgst = taxableAmount * 0.09;
+        sgst = taxableAmount * 0.09;
+      } else {
+        igst = taxableAmount * 0.18;
+      }
     }
 
     const gstAmount = cgst + sgst + igst;
@@ -148,6 +153,7 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
           // Clear form and reset state
           form.resetFields();
           form.setFieldsValue({ 
+            piMode: "duty_paid",
             products: [{ productName: "", hsnCode: "", quantity: 1, unit: "Pcs", rate: 0 }],
             additionalCharges: [],
             piSharedBy: currentUser.name,
@@ -179,6 +185,7 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
         form={form}
         layout="vertical"
         initialValues={{
+          piMode: "duty_paid",
           products: [{ productName: "", hsnCode: "", quantity: 1, unit: "Pcs", rate: 0 }],
           isDelhiNcr: false,
           additionalCharges: [],
@@ -190,6 +197,23 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
           setRefreshVal(prev => prev + 1);
         }}
       >
+        <Card bordered={false} className="glass-card" style={{ marginBottom: 24 }}>
+          <Form.Item name="piMode" label="Invoice Type" style={{ marginBottom: 0 }}>
+            <Segmented
+              block
+              options={[
+                { label: "Duty Paid", value: "duty_paid" },
+                { label: "IGCR", value: "igcr" }
+              ]}
+            />
+          </Form.Item>
+          <p style={{ color: "var(--text-secondary-light)", margin: "12px 0 0", fontSize: "0.85rem" }}>
+            {piMode === "igcr"
+              ? "IGCR mode: no GST applied. Grand total is product amount (Qty × Rate) plus additional charges."
+              : "Duty Paid mode: GST applied as per Delhi/NCR (CGST + SGST) or IGST rules."}
+          </p>
+        </Card>
+
         <Row gutter={24}>
           {/* Form Panel */}
           <Col xs={24} lg={16}>
@@ -249,7 +273,7 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
                 <Input.TextArea rows={3} placeholder="Billing and Shipping Address" />
               </Form.Item>
 
-              <Form.Item name="isDelhiNcr" valuePropName="checked">
+              <Form.Item name="isDelhiNcr" valuePropName="checked" hidden={piMode === "igcr"}>
                 <Checkbox>
                   <strong>Delhi / NCR Region Customer</strong> (Applies CGST 9% + SGST 9%, otherwise IGST 18%)
                 </Checkbox>
@@ -495,6 +519,7 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
                   const totals = getTotals(values);
                   const chargesList = values?.additionalCharges || [];
                   const isDelhiNcrVal = values?.isDelhiNcr || false;
+                  const isIgcrMode = values?.piMode === "igcr";
                   return (
                     <>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
@@ -502,33 +527,37 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
                         <span>₹{totals.subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                       </div>
 
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                        <strong>Taxable Value</strong>
-                        <strong>₹{totals.taxable.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong>
-                      </div>
-
-                      {isDelhiNcrVal ? (
+                      {!isIgcrMode && (
                         <>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, paddingLeft: 12 }}>
-                            <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>CGST (9%)</span>
-                            <span style={{ fontSize: "0.85rem" }}>₹{totals.cgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                            <strong>Taxable Value</strong>
+                            <strong>₹{totals.taxable.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, paddingLeft: 12 }}>
-                            <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>SGST (9%)</span>
-                            <span style={{ fontSize: "0.85rem" }}>₹{totals.sgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+
+                          {isDelhiNcrVal ? (
+                            <>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, paddingLeft: 12 }}>
+                                <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>CGST (9%)</span>
+                                <span style={{ fontSize: "0.85rem" }}>₹{totals.cgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, paddingLeft: 12 }}>
+                                <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>SGST (9%)</span>
+                                <span style={{ fontSize: "0.85rem" }}>₹{totals.sgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, paddingLeft: 12 }}>
+                              <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>IGST (18%)</span>
+                              <span style={{ fontSize: "0.85rem" }}>₹{totals.igst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                            <span style={{ color: "var(--text-secondary-light)" }}>Total GST</span>
+                            <span>₹{totals.gst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                           </div>
                         </>
-                      ) : (
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, paddingLeft: 12 }}>
-                          <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>IGST (18%)</span>
-                          <span style={{ fontSize: "0.85rem" }}>₹{totals.igst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                        </div>
                       )}
-
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                        <span style={{ color: "var(--text-secondary-light)" }}>Total GST</span>
-                        <span>₹{totals.gst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                      </div>
 
                       {chargesList.length > 0 && (
                         <>

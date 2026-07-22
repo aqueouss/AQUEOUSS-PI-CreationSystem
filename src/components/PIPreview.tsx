@@ -231,6 +231,12 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
                     <td style={{ padding: "3px 8px", fontWeight: "bold", border: "1px solid #cbd5e1" }}>PI Shared By</td>
                     <td style={{ padding: "3px 8px", border: "1px solid #cbd5e1" }}>{piSharedBy}</td>
                   </tr>
+                  {data.piMode === "igcr" && (
+                    <tr>
+                      <td style={{ padding: "3px 8px", fontWeight: "bold", border: "1px solid #cbd5e1" }}>Type</td>
+                      <td style={{ padding: "3px 8px", border: "1px solid #cbd5e1" }}>IGCR (No GST)</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -314,41 +320,60 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
             <div style={{ width: "48%" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <tbody>
-                  <tr>
-                    <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Taxable Amount</td>
-                    <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                      ₹{data.totals.taxable.toFixed(2)}
-                    </td>
-                  </tr>
-                  {data.isDelhiNcr ? (
+                  {data.piMode === "igcr" ? (
                     <>
                       <tr>
-                        <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>CGST (9%)</td>
+                        <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Product Total</td>
                         <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                          ₹{data.totals.cgst.toFixed(2)}
+                          ₹{data.totals.subtotal.toFixed(2)}
                         </td>
                       </tr>
-                      <tr>
-                        <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>SGST (9%)</td>
-                        <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                          ₹{data.totals.sgst.toFixed(2)}
+                      <tr style={{ backgroundColor: "#f8fafc" }}>
+                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Grand Total</td>
+                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
+                          ₹{data.totals.grand.toFixed(2)}
                         </td>
                       </tr>
                     </>
                   ) : (
-                    <tr>
-                      <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>IGST (18%)</td>
-                      <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                        ₹{data.totals.igst.toFixed(2)}
-                      </td>
-                    </tr>
+                    <>
+                      <tr>
+                        <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Taxable Amount</td>
+                        <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+                          ₹{data.totals.taxable.toFixed(2)}
+                        </td>
+                      </tr>
+                      {data.isDelhiNcr ? (
+                        <>
+                          <tr>
+                            <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>CGST (9%)</td>
+                            <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+                              ₹{data.totals.cgst.toFixed(2)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>SGST (9%)</td>
+                            <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+                              ₹{data.totals.sgst.toFixed(2)}
+                            </td>
+                          </tr>
+                        </>
+                      ) : (
+                        <tr>
+                          <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>IGST (18%)</td>
+                          <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+                            ₹{data.totals.igst.toFixed(2)}
+                          </td>
+                        </tr>
+                      )}
+                      <tr style={{ backgroundColor: "#f8fafc" }}>
+                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Grand Total</td>
+                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
+                          ₹{data.totals.grand.toFixed(2)}
+                        </td>
+                      </tr>
+                    </>
                   )}
-                  <tr style={{ backgroundColor: "#f8fafc" }}>
-                    <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Grand Total</td>
-                    <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
-                      ₹{data.totals.grand.toFixed(2)}
-                    </td>
-                  </tr>
                 </tbody>
               </table>
             </div>
