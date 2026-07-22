@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { getDashboardData } from "../api";
 import { getSavedPIs, downloadStoredPI } from "../piStorage";
+import { formatINR } from "../formatCurrency";
 import { PILogEntry, DashboardStats, User, StoredPI } from "../types";
 import { PIPreview } from "./PIPreview";
 
@@ -99,7 +100,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
       align: "right" as const,
       render: (val: number) => (
         <span style={{ fontWeight: 600 }}>
-          ₹{val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ₹{formatINR(val, 0)}
         </span>
       ),
     },
@@ -141,7 +142,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToCreate }) => {
       align: "right" as const,
       render: (val: number) => (
         <span style={{ fontWeight: 600 }}>
-          ₹{val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ₹{formatINR(val, 0)}
         </span>
       ),
     },

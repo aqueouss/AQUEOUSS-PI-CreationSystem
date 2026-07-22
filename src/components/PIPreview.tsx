@@ -2,8 +2,9 @@ import React, { useCallback, useEffect } from "react";
 import { Button, Space, App } from "antd";
 import { DownloadOutlined, CloseOutlined } from "@ant-design/icons";
 import html2pdf from "html2pdf.js";
-import { PIPreviewData } from "../types";
+import { PIPreviewData, PIPreviewTotals } from "../types";
 import { savePI, triggerBlobDownload } from "../piStorage";
+import { applyRoundOff, formatINR, formatINRWhole } from "../formatCurrency";
 
 interface PIPreviewProps {
   data: PIPreviewData;
@@ -98,12 +99,45 @@ function parseBulletPoints(text: string): string[] {
     .filter(Boolean);
 }
 
+function resolveTotals(totals: PIPreviewTotals): PIPreviewTotals {
+  if (totals.grandBeforeRoundOff !== undefined) {
+    return totals;
+  }
+  const raw = totals.grand;
+  const rounded = applyRoundOff(raw);
+  return { ...totals, ...rounded };
+}
+
+function RoundOffRows({ totals }: { totals: PIPreviewTotals }) {
+  if (Math.abs(totals.roundOff) < 0.01) return null;
+  return (
+    <tr>
+      <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>Round Off</td>
+      <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+        {totals.roundOff >= 0 ? "+" : ""}₹{formatINR(totals.roundOff)}
+      </td>
+    </tr>
+  );
+}
+
+function GrandTotalRow({ totals }: { totals: PIPreviewTotals }) {
+  return (
+    <tr style={{ backgroundColor: "#f8fafc" }}>
+      <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Grand Total</td>
+      <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
+        ₹{formatINRWhole(totals.grand)}
+      </td>
+    </tr>
+  );
+}
+
 export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = false }) => {
   const { message } = App.useApp();
   const piNo = data.piNumber || "AQ/2026-27/DRAFT";
   const piDate = data.date || new Date().toISOString().split("T")[0];
   const dispatchDate = data.dispatchDate || "-";
   const piSharedBy = data.piSharedBy || "-";
+  const totals = resolveTotals(data.totals);
 
   const handleDownload = useCallback(async () => {
     const element = document.getElementById("aqueouss-pi-document");
@@ -124,8 +158,8 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
           savedAt: new Date().toISOString(),
           customerName: data.customerName,
           date: piDate,
-          grandTotal: data.totals.grand,
-          invoiceData: data,
+          grandTotal: totals.grand,
+          invoiceData: { ...data, totals },
           pdfBlob: blob
         });
       }
@@ -285,8 +319,8 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
                     <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "center" }}>{p.hsnCode}</td>
                     <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "right" }}>{p.quantity}</td>
                     <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "center" }}>{p.unit}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "right" }}>₹{p.rate.toFixed(2)}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "right" }}>₹{amount.toFixed(2)}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "right" }}>₹{formatINR(p.rate)}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "right" }}>₹{formatINR(amount)}</td>
                   </tr>
                 );
               })}
@@ -298,7 +332,7 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
                     <strong>{c.desc}</strong>
                   </td>
                   <td style={{ border: "1px solid #cbd5e1", padding: "8px 8px", textAlign: "right" }}>
-                    ₹{c.amount.toFixed(2)}
+                    ₹{formatINR(c.amount)}
                   </td>
                 </tr>
               ))}
@@ -325,22 +359,18 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
                       <tr>
                         <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Product Total</td>
                         <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                          ₹{data.totals.subtotal.toFixed(2)}
+                          ₹{formatINR(totals.subtotal)}
                         </td>
                       </tr>
-                      <tr style={{ backgroundColor: "#f8fafc" }}>
-                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Grand Total</td>
-                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
-                          ₹{data.totals.grand.toFixed(2)}
-                        </td>
-                      </tr>
+                      <RoundOffRows totals={totals} />
+                      <GrandTotalRow totals={totals} />
                     </>
                   ) : (
                     <>
                       <tr>
                         <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Taxable Amount</td>
                         <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                          ₹{data.totals.taxable.toFixed(2)}
+                          ₹{formatINR(totals.taxable)}
                         </td>
                       </tr>
                       {data.isDelhiNcr ? (
@@ -348,13 +378,13 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
                           <tr>
                             <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>CGST (9%)</td>
                             <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                              ₹{data.totals.cgst.toFixed(2)}
+                              ₹{formatINR(totals.cgst)}
                             </td>
                           </tr>
                           <tr>
                             <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>SGST (9%)</td>
                             <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                              ₹{data.totals.sgst.toFixed(2)}
+                              ₹{formatINR(totals.sgst)}
                             </td>
                           </tr>
                         </>
@@ -362,16 +392,12 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
                         <tr>
                           <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", color: "#475569" }}>IGST (18%)</td>
                           <td style={{ padding: "5px 8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
-                            ₹{data.totals.igst.toFixed(2)}
+                            ₹{formatINR(totals.igst)}
                           </td>
                         </tr>
                       )}
-                      <tr style={{ backgroundColor: "#f8fafc" }}>
-                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", fontWeight: "bold" }}>Grand Total</td>
-                        <td style={{ padding: "6px 8px", border: "1px solid #cbd5e1", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
-                          ₹{data.totals.grand.toFixed(2)}
-                        </td>
-                      </tr>
+                      <RoundOffRows totals={totals} />
+                      <GrandTotalRow totals={totals} />
                     </>
                   )}
                 </tbody>
@@ -381,7 +407,7 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
 
           {/* Amount In Words */}
           <div style={{ border: "1px solid #cbd5e1", padding: "10px", borderRadius: "4px", marginBottom: "20px" }}>
-            <strong>Amount in Words: </strong> {numberToWords(data.totals.grand)}
+            <strong>Amount in Words: </strong> {numberToWords(totals.grand)}
           </div>
 
           {/* Optional Notes / Terms */}

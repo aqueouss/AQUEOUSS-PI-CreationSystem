@@ -22,6 +22,7 @@ import { PlusOutlined, DeleteOutlined, FileSearchOutlined, CheckCircleOutlined }
 import { generatePI } from "../api";
 import { User, PICreationInput, PIPreviewData, InvoiceNotes } from "../types";
 import { PIPreview } from "./PIPreview";
+import { applyRoundOff, formatINR } from "../formatCurrency";
 
 interface PICreationProps {
   currentUser: User;
@@ -77,7 +78,8 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
       totalCharges += Number(c?.amount) || 0;
     });
 
-    const grandTotal = taxableAmount + gstAmount + totalCharges;
+    const grandBeforeRoundOff = taxableAmount + gstAmount + totalCharges;
+    const { roundOff, grand } = applyRoundOff(grandBeforeRoundOff);
 
     return {
       subtotal,
@@ -87,7 +89,9 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
       igst,
       gst: gstAmount,
       totalCharges,
-      grand: grandTotal
+      grandBeforeRoundOff,
+      roundOff,
+      grand
     };
   };
 
@@ -524,37 +528,37 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
                     <>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                         <span style={{ color: "var(--text-secondary-light)" }}>Subtotal (Products)</span>
-                        <span>₹{totals.subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                        <span>₹{formatINR(totals.subtotal)}</span>
                       </div>
 
                       {!isIgcrMode && (
                         <>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                             <strong>Taxable Value</strong>
-                            <strong>₹{totals.taxable.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong>
+                            <strong>₹{formatINR(totals.taxable)}</strong>
                           </div>
 
                           {isDelhiNcrVal ? (
                             <>
                               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, paddingLeft: 12 }}>
                                 <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>CGST (9%)</span>
-                                <span style={{ fontSize: "0.85rem" }}>₹{totals.cgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                <span style={{ fontSize: "0.85rem" }}>₹{formatINR(totals.cgst)}</span>
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, paddingLeft: 12 }}>
                                 <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>SGST (9%)</span>
-                                <span style={{ fontSize: "0.85rem" }}>₹{totals.sgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                <span style={{ fontSize: "0.85rem" }}>₹{formatINR(totals.sgst)}</span>
                               </div>
                             </>
                           ) : (
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, paddingLeft: 12 }}>
                               <span style={{ color: "var(--text-secondary-light)", fontSize: "0.85rem" }}>IGST (18%)</span>
-                              <span style={{ fontSize: "0.85rem" }}>₹{totals.igst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                              <span style={{ fontSize: "0.85rem" }}>₹{formatINR(totals.igst)}</span>
                             </div>
                           )}
 
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                             <span style={{ color: "var(--text-secondary-light)" }}>Total GST</span>
-                            <span>₹{totals.gst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                            <span>₹{formatINR(totals.gst)}</span>
                           </div>
                         </>
                       )}
@@ -568,18 +572,25 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
                             return (
                               <div key={index} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, paddingLeft: 12, fontSize: "0.85rem" }}>
                                 <span>{c.desc}</span>
-                                <span>₹{(Number(c.amount) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                <span>₹{formatINR(Number(c.amount) || 0)}</span>
                               </div>
                             );
                           })}
                         </>
                       )}
 
+                      {Math.abs(totals.roundOff) >= 0.01 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                          <span style={{ color: "var(--text-secondary-light)" }}>Round Off</span>
+                          <span>{totals.roundOff >= 0 ? "+" : ""}₹{formatINR(totals.roundOff)}</span>
+                        </div>
+                      )}
+
                       <Divider style={{ margin: "12px 0" }} />
 
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24, fontSize: "1.2rem", fontWeight: 700 }}>
                         <span style={{ color: "var(--primary-hover)" }}>Grand Total</span>
-                        <span style={{ color: "var(--primary-hover)" }}>₹{totals.grand.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                        <span style={{ color: "var(--primary-hover)" }}>₹{formatINR(totals.grand, 0)}</span>
                       </div>
                     </>
                   );

@@ -71,6 +71,8 @@ export interface PIPreviewTotals {
   sgst: number;
   igst: number;
   gst: number;
+  grandBeforeRoundOff: number;
+  roundOff: number;
   grand: number;
 }
 
