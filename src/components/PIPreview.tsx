@@ -5,6 +5,7 @@ import html2pdf from "html2pdf.js";
 import { PIPreviewData, PIPreviewTotals } from "../types";
 import { savePI, triggerBlobDownload } from "../piStorage";
 import { applyRoundOff, formatINR, formatINRWhole } from "../formatCurrency";
+import { StandardPITerms } from "./StandardPITerms";
 
 interface PIPreviewProps {
   data: PIPreviewData;
@@ -409,6 +410,8 @@ export const PIPreview: React.FC<PIPreviewProps> = ({ data, onClose, readOnly = 
           <div style={{ border: "1px solid #cbd5e1", padding: "10px", borderRadius: "4px", marginBottom: "20px" }}>
             <strong>Amount in Words: </strong> {numberToWords(totals.grand)}
           </div>
+
+          <StandardPITerms variant="pdf" />
 
           {/* Optional Notes / Terms */}
           {data.invoiceNotes?.enabled && data.invoiceNotes.description && (

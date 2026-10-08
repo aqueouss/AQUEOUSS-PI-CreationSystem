@@ -22,6 +22,7 @@ import { PlusOutlined, DeleteOutlined, FileSearchOutlined, CheckCircleOutlined }
 import { generatePI } from "../api";
 import { User, PICreationInput, PIPreviewData, InvoiceNotes } from "../types";
 import { PIPreview } from "./PIPreview";
+import { StandardPITerms } from "./StandardPITerms";
 import { applyRoundOff, formatINR } from "../formatCurrency";
 
 interface PICreationProps {
@@ -458,6 +459,15 @@ export const PICreation: React.FC<PICreationProps> = ({ currentUser, onGeneratio
                   </>
                 )}
               </Form.List>
+            </Card>
+
+            <Card
+              title="Terms & Conditions (Included on every PI)"
+              bordered={false}
+              className="glass-card"
+              style={{ marginBottom: 24 }}
+            >
+              <StandardPITerms variant="form" />
             </Card>
 
             <Card title="Notes / Terms (Optional)" bordered={false} className="glass-card" style={{ marginBottom: 24 }}>
